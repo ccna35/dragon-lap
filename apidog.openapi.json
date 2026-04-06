@@ -1,0 +1,1155 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Dragon Lap MVP Backend API",
+    "description": "Single-tenant laptop store backend (NestJS + Prisma + JWT).",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000/api",
+      "description": "Local development"
+    }
+  ],
+  "tags": [
+    { "name": "Auth" },
+    { "name": "Users" },
+    { "name": "Laptops" },
+    { "name": "Cart" },
+    { "name": "Orders" },
+    { "name": "Admin" }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Register customer account",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RegisterDto" },
+              "example": {
+                "fullName": "Ahmed Ali",
+                "email": "ahmed@example.com",
+                "password": "secret123",
+                "phone": "01011223344"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Registered",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UserPublic" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Login customer or admin",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginDto" },
+              "example": {
+                "email": "admin@dragonlap.local",
+                "password": "admin123456"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "accessToken": { "type": "string" },
+                    "user": { "$ref": "#/components/schemas/UserLoginView" }
+                  }
+                },
+                "example": {
+                  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                  "user": {
+                    "id": "4c3fdd44-f9de-44b3-b3fc-a1818eeff511",
+                    "fullName": "Store Admin",
+                    "email": "admin@dragonlap.local",
+                    "role": "ADMIN"
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/users/me": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Get current user profile",
+        "responses": {
+          "200": {
+            "description": "Current user",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UserPublic" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/users": {
+      "get": {
+        "tags": ["Admin", "Users"],
+        "summary": "List users (admin only)",
+        "responses": {
+          "200": {
+            "description": "Users list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/UserPublic" }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/laptops": {
+      "get": {
+        "tags": ["Laptops"],
+        "summary": "List published laptops",
+        "security": [],
+        "parameters": [
+          { "name": "search", "in": "query", "schema": { "type": "string" } },
+          { "name": "brand", "in": "query", "schema": { "type": "string" } },
+          {
+            "name": "minPrice",
+            "in": "query",
+            "schema": { "type": "number", "minimum": 0 }
+          },
+          {
+            "name": "maxPrice",
+            "in": "query",
+            "schema": { "type": "number", "minimum": 0 }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["price_asc", "price_desc", "newest"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Laptops",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Laptop" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/laptops/{id}": {
+      "get": {
+        "tags": ["Laptops"],
+        "summary": "Get published laptop by ID",
+        "security": [],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Laptop details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Laptop" }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/admin/laptops": {
+      "get": {
+        "tags": ["Admin", "Laptops"],
+        "summary": "List all laptops (admin)",
+        "parameters": [
+          { "name": "search", "in": "query", "schema": { "type": "string" } },
+          { "name": "brand", "in": "query", "schema": { "type": "string" } },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["price_asc", "price_desc", "newest"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "All laptops",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Laptop" }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "post": {
+        "tags": ["Admin", "Laptops"],
+        "summary": "Create laptop (admin)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateLaptopDto" },
+              "example": {
+                "title": "Lenovo Legion Pro 5",
+                "brand": "Lenovo",
+                "model": "16IRX9",
+                "price": 76999,
+                "stock": 8,
+                "cpu": "Intel Core i7-14650HX",
+                "ram": "16GB",
+                "storage": "1TB NVMe",
+                "gpu": "RTX 4060",
+                "screenSize": "16 inch",
+                "os": "Windows 11",
+                "imageUrl": "https://example.com/legion-pro5.jpg",
+                "shortDescription": "High-performance gaming laptop",
+                "description": "QHD+ display, high refresh rate, RTX graphics",
+                "isPublished": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Laptop" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/admin/laptops/{id}": {
+      "patch": {
+        "tags": ["Admin", "Laptops"],
+        "summary": "Update laptop (admin)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateLaptopDto" },
+              "example": {
+                "price": 74999,
+                "stock": 12,
+                "isPublished": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Laptop" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["Admin", "Laptops"],
+        "summary": "Soft delete (unpublish) laptop (admin)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Soft deleted",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Laptop" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/cart": {
+      "get": {
+        "tags": ["Cart"],
+        "summary": "Get current customer cart",
+        "responses": {
+          "200": {
+            "description": "Cart items",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/CartItemWithLaptop" }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/cart/items": {
+      "post": {
+        "tags": ["Cart"],
+        "summary": "Add item to cart",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AddCartItemDto" },
+              "example": {
+                "laptopId": "78e13f7e-c53f-4f03-95f1-3f5d2fadb6c2",
+                "quantity": 2
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Added to cart",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CartItemWithLaptop" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/cart/items/{id}": {
+      "patch": {
+        "tags": ["Cart"],
+        "summary": "Update cart item quantity",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateCartItemDto" },
+              "example": { "quantity": 1 }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated cart item",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CartItemWithLaptop" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["Cart"],
+        "summary": "Remove cart item",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Removed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" }
+                  },
+                  "example": {
+                    "message": "Item removed from cart"
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/orders": {
+      "post": {
+        "tags": ["Orders"],
+        "summary": "Place COD order from current cart",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateOrderDto" },
+              "example": {
+                "fullName": "Ahmed Ali",
+                "phone": "01011223344",
+                "alternatePhone": "01099887766",
+                "city": "Cairo",
+                "area": "Nasr City",
+                "streetAddress": "Building 20, Street 10",
+                "notes": "Call before delivery"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Order placed",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/OrderWithItems" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/orders/my": {
+      "get": {
+        "tags": ["Orders"],
+        "summary": "Get current customer orders",
+        "responses": {
+          "200": {
+            "description": "My orders",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/OrderWithItems" }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/orders/my/{id}": {
+      "get": {
+        "tags": ["Orders"],
+        "summary": "Get one customer order by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Order",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/OrderWithItems" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/admin/orders": {
+      "get": {
+        "tags": ["Admin", "Orders"],
+        "summary": "List all orders (admin)",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/OrderStatusEnum"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Orders list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrderWithItemsAndUser"
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/admin/orders/{id}": {
+      "get": {
+        "tags": ["Admin", "Orders"],
+        "summary": "Get one order (admin)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Order details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWithItemsAndUser"
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/admin/orders/{id}/status": {
+      "patch": {
+        "tags": ["Admin", "Orders"],
+        "summary": "Update order status with transition rules (admin)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateOrderStatusDto" },
+              "example": {
+                "status": "CONFIRMED"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Status updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Order" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Validation or business rule failure",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "example": {
+              "statusCode": 400,
+              "message": "Requested quantity exceeds stock",
+              "error": "Bad Request"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Missing or invalid token",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "example": {
+              "statusCode": 401,
+              "message": "Unauthorized",
+              "error": "Unauthorized"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Role/ownership denied",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "example": {
+              "statusCode": 403,
+              "message": "Insufficient role",
+              "error": "Forbidden"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Resource not found",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "example": {
+              "statusCode": 404,
+              "message": "Not found",
+              "error": "Not Found"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Role": {
+        "type": "string",
+        "enum": ["ADMIN", "CUSTOMER"]
+      },
+      "PaymentMethod": {
+        "type": "string",
+        "enum": ["COD"]
+      },
+      "OrderStatusEnum": {
+        "type": "string",
+        "enum": [
+          "PENDING",
+          "CONFIRMED",
+          "PREPARING",
+          "OUT_FOR_DELIVERY",
+          "DELIVERED",
+          "CANCELLED"
+        ]
+      },
+      "RegisterDto": {
+        "type": "object",
+        "required": ["fullName", "email", "password"],
+        "properties": {
+          "fullName": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string", "minLength": 6 },
+          "phone": { "type": "string" }
+        }
+      },
+      "LoginDto": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string", "minLength": 6 }
+        }
+      },
+      "CreateLaptopDto": {
+        "type": "object",
+        "required": ["title", "brand", "model", "price", "stock"],
+        "properties": {
+          "title": { "type": "string" },
+          "slug": { "type": "string" },
+          "brand": { "type": "string" },
+          "model": { "type": "string" },
+          "price": { "type": "number", "minimum": 0 },
+          "stock": { "type": "number", "minimum": 0 },
+          "shortDescription": { "type": "string" },
+          "description": { "type": "string" },
+          "cpu": { "type": "string" },
+          "ram": { "type": "string" },
+          "storage": { "type": "string" },
+          "gpu": { "type": "string" },
+          "screenSize": { "type": "string" },
+          "os": { "type": "string" },
+          "imageUrl": { "type": "string" },
+          "isPublished": { "type": "boolean" }
+        }
+      },
+      "UpdateLaptopDto": {
+        "allOf": [{ "$ref": "#/components/schemas/CreateLaptopDto" }]
+      },
+      "AddCartItemDto": {
+        "type": "object",
+        "required": ["laptopId", "quantity"],
+        "properties": {
+          "laptopId": { "type": "string", "format": "uuid" },
+          "quantity": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "UpdateCartItemDto": {
+        "type": "object",
+        "required": ["quantity"],
+        "properties": {
+          "quantity": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "CreateOrderDto": {
+        "type": "object",
+        "required": ["fullName", "phone", "city", "area", "streetAddress"],
+        "properties": {
+          "fullName": { "type": "string" },
+          "phone": { "type": "string" },
+          "alternatePhone": { "type": "string" },
+          "city": { "type": "string" },
+          "area": { "type": "string" },
+          "streetAddress": { "type": "string" },
+          "notes": { "type": "string" }
+        }
+      },
+      "UpdateOrderStatusDto": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": { "$ref": "#/components/schemas/OrderStatusEnum" }
+        }
+      },
+      "UserPublic": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "fullName": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "phone": { "type": "string", "nullable": true },
+          "role": { "$ref": "#/components/schemas/Role" },
+          "isActive": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "UserLoginView": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "fullName": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "role": { "$ref": "#/components/schemas/Role" }
+        }
+      },
+      "Laptop": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "title": { "type": "string" },
+          "slug": { "type": "string" },
+          "brand": { "type": "string" },
+          "model": { "type": "string" },
+          "price": { "type": "string", "example": "76999.00" },
+          "stock": { "type": "integer" },
+          "shortDescription": { "type": "string", "nullable": true },
+          "description": { "type": "string", "nullable": true },
+          "cpu": { "type": "string", "nullable": true },
+          "ram": { "type": "string", "nullable": true },
+          "storage": { "type": "string", "nullable": true },
+          "gpu": { "type": "string", "nullable": true },
+          "screenSize": { "type": "string", "nullable": true },
+          "os": { "type": "string", "nullable": true },
+          "imageUrl": { "type": "string", "nullable": true },
+          "isPublished": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CartItemWithLaptop": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "userId": { "type": "string", "format": "uuid" },
+          "laptopId": { "type": "string", "format": "uuid" },
+          "quantity": { "type": "integer" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" },
+          "laptop": { "$ref": "#/components/schemas/Laptop" }
+        }
+      },
+      "Order": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "userId": { "type": "string", "format": "uuid" },
+          "status": { "$ref": "#/components/schemas/OrderStatusEnum" },
+          "paymentMethod": { "$ref": "#/components/schemas/PaymentMethod" },
+          "fullName": { "type": "string" },
+          "phone": { "type": "string" },
+          "alternatePhone": { "type": "string", "nullable": true },
+          "city": { "type": "string" },
+          "area": { "type": "string" },
+          "streetAddress": { "type": "string" },
+          "notes": { "type": "string", "nullable": true },
+          "subtotal": { "type": "string", "example": "153998.00" },
+          "shippingFee": { "type": "string", "example": "0.00" },
+          "total": { "type": "string", "example": "153998.00" },
+          "placedAt": { "type": "string", "format": "date-time" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "OrderItem": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "orderId": { "type": "string", "format": "uuid" },
+          "laptopId": { "type": "string", "format": "uuid", "nullable": true },
+          "laptopTitleSnapshot": { "type": "string" },
+          "unitPriceSnapshot": { "type": "string", "example": "76999.00" },
+          "quantity": { "type": "integer" },
+          "lineTotal": { "type": "string", "example": "153998.00" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "OrderWithItems": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Order" },
+          {
+            "type": "object",
+            "properties": {
+              "items": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/OrderItem" }
+              }
+            }
+          }
+        ]
+      },
+      "OrderWithItemsAndUser": {
+        "allOf": [
+          { "$ref": "#/components/schemas/OrderWithItems" },
+          {
+            "type": "object",
+            "properties": {
+              "user": {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string", "format": "uuid" },
+                  "fullName": { "type": "string" },
+                  "email": { "type": "string", "format": "email" },
+                  "phone": { "type": "string", "nullable": true }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "statusCode": { "type": "integer" },
+          "message": {
+            "oneOf": [
+              { "type": "string" },
+              {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            ]
+          },
+          "error": { "type": "string" }
+        }
+      }
+    }
+  },
+  "x-use-cases": [
+    {
+      "id": "UC-1",
+      "title": "Customer registration and login",
+      "actor": "Customer",
+      "preconditions": ["Email is not already used"],
+      "mainFlow": [
+        "POST /auth/register",
+        "POST /auth/login",
+        "Use accessToken in Authorization header"
+      ],
+      "expectedOutcome": "Customer receives JWT and can access customer endpoints"
+    },
+    {
+      "id": "UC-2",
+      "title": "Browse laptops",
+      "actor": "Customer/Public",
+      "mainFlow": ["GET /laptops", "GET /laptops/{id}"],
+      "expectedOutcome": "Only published laptops are visible"
+    },
+    {
+      "id": "UC-3",
+      "title": "Cart lifecycle",
+      "actor": "Customer",
+      "mainFlow": [
+        "POST /cart/items",
+        "PATCH /cart/items/{id}",
+        "GET /cart",
+        "DELETE /cart/items/{id}"
+      ],
+      "expectedOutcome": "Cart enforces stock and minimum quantity rules"
+    },
+    {
+      "id": "UC-4",
+      "title": "Place COD order",
+      "actor": "Customer",
+      "mainFlow": ["POST /orders", "GET /orders/my", "GET /orders/my/{id}"],
+      "expectedOutcome": "Order created with snapshots, stock decremented, cart cleared"
+    },
+    {
+      "id": "UC-5",
+      "title": "Admin management",
+      "actor": "Admin",
+      "mainFlow": [
+        "POST/PATCH/DELETE /admin/laptops",
+        "GET /admin/orders",
+        "PATCH /admin/orders/{id}/status",
+        "GET /users"
+      ],
+      "expectedOutcome": "Admin can operate store inventory and order workflow"
+    }
+  ],
+  "x-scenarios": [
+    {
+      "id": "SC-1",
+      "title": "Happy path checkout",
+      "steps": [
+        "Customer logs in",
+        "Adds in-stock laptop to cart",
+        "Places order with valid address",
+        "System validates stock and creates order transactionally"
+      ],
+      "result": "Order status = PENDING, paymentMethod = COD, cart becomes empty"
+    },
+    {
+      "id": "SC-2",
+      "title": "Out-of-stock protection",
+      "steps": [
+        "Customer requests quantity above stock",
+        "POST /cart/items or PATCH /cart/items/{id}"
+      ],
+      "result": "400 Bad Request with stock-related message"
+    },
+    {
+      "id": "SC-3",
+      "title": "Invalid order transition",
+      "steps": [
+        "Admin tries DELIVERED -> CONFIRMED",
+        "PATCH /admin/orders/{id}/status"
+      ],
+      "result": "400 Bad Request for invalid transition"
+    },
+    {
+      "id": "SC-4",
+      "title": "Cancel order and restore stock",
+      "steps": [
+        "Admin cancels PENDING/CONFIRMED/PREPARING order",
+        "System increments laptop stock by order item quantities"
+      ],
+      "result": "Order status becomes CANCELLED and stock restored once"
+    }
+  ],
+  "x-test-cases": [
+    {
+      "id": "TC-AUTH-001",
+      "name": "Register new customer",
+      "request": {
+        "method": "POST",
+        "path": "/auth/register",
+        "body": {
+          "fullName": "Mona Saleh",
+          "email": "mona@example.com",
+          "password": "secret123"
+        }
+      },
+      "expected": {
+        "statusCode": 201,
+        "assertions": [
+          "response.id is uuid",
+          "response.role equals CUSTOMER",
+          "response does not contain passwordHash"
+        ]
+      }
+    },
+    {
+      "id": "TC-AUTH-002",
+      "name": "Login wrong password",
+      "request": {
+        "method": "POST",
+        "path": "/auth/login",
+        "body": {
+          "email": "admin@dragonlap.local",
+          "password": "wrong-pass"
+        }
+      },
+      "expected": {
+        "statusCode": 401
+      }
+    },
+    {
+      "id": "TC-CART-001",
+      "name": "Reject quantity below 1",
+      "request": {
+        "method": "POST",
+        "path": "/cart/items",
+        "body": {
+          "laptopId": "78e13f7e-c53f-4f03-95f1-3f5d2fadb6c2",
+          "quantity": 0
+        }
+      },
+      "expected": {
+        "statusCode": 400
+      }
+    },
+    {
+      "id": "TC-ORDER-001",
+      "name": "Checkout from empty cart",
+      "request": {
+        "method": "POST",
+        "path": "/orders",
+        "body": {
+          "fullName": "Ahmed Ali",
+          "phone": "01011223344",
+          "city": "Cairo",
+          "area": "Nasr City",
+          "streetAddress": "Building 20, Street 10"
+        }
+      },
+      "expected": {
+        "statusCode": 400,
+        "containsMessage": "Cart is empty"
+      }
+    },
+    {
+      "id": "TC-ORDER-002",
+      "name": "Reject forbidden transition",
+      "request": {
+        "method": "PATCH",
+        "path": "/admin/orders/{id}/status",
+        "body": {
+          "status": "CONFIRMED"
+        }
+      },
+      "setup": ["Ensure order current status is DELIVERED"],
+      "expected": {
+        "statusCode": 400
+      }
+    },
+    {
+      "id": "TC-ADMIN-001",
+      "name": "Customer cannot create laptop",
+      "request": {
+        "method": "POST",
+        "path": "/admin/laptops"
+      },
+      "expected": {
+        "statusCode": 403
+      }
+    }
+  ]
+}

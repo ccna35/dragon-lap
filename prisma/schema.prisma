@@ -1,0 +1,132 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  CUSTOMER
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  COD
+}
+
+model User {
+  id           String     @id @default(uuid()) @db.Uuid
+  fullName     String
+  email        String     @unique
+  passwordHash String
+  phone        String?
+  role         UserRole   @default(CUSTOMER)
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  cartItems    CartItem[]
+  orders       Order[]
+  refreshTokens        RefreshToken[]
+}
+
+model Laptop {
+  id               String      @id @default(uuid()) @db.Uuid
+  title            String
+  slug             String      @unique
+  brand            String
+  model            String
+  price            Decimal     @db.Decimal(10, 2)
+  stock            Int
+  shortDescription String?
+  description      String?
+  cpu              String?
+  ram              String?
+  storage          String?
+  gpu              String?
+  screenSize       String?
+  os               String?
+  imageUrl         String?
+  isPublished      Boolean     @default(true)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  cartItems        CartItem[]
+  orderItems       OrderItem[]
+}
+
+model CartItem {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  laptopId  String   @db.Uuid
+  quantity  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  laptop Laptop @relation(fields: [laptopId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, laptopId])
+}
+
+model Order {
+  id             String        @id @default(uuid()) @db.Uuid
+  userId         String        @db.Uuid
+  status         OrderStatus   @default(PENDING)
+  paymentMethod  PaymentMethod @default(COD)
+  fullName       String
+  phone          String
+  alternatePhone String?
+  city           String
+  area           String
+  streetAddress  String
+  notes          String?
+  subtotal       Decimal       @db.Decimal(10, 2)
+  shippingFee    Decimal       @db.Decimal(10, 2) @default(0)
+  total          Decimal       @db.Decimal(10, 2)
+  placedAt       DateTime      @default(now())
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  user  User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  items OrderItem[]
+}
+
+model OrderItem {
+  id                  String   @id @default(uuid()) @db.Uuid
+  orderId             String   @db.Uuid
+  laptopId            String?  @db.Uuid
+  laptopTitleSnapshot String
+  unitPriceSnapshot   Decimal  @db.Decimal(10, 2)
+  quantity            Int
+  lineTotal           Decimal  @db.Decimal(10, 2)
+  createdAt           DateTime @default(now())
+
+  order  Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  laptop Laptop? @relation(fields: [laptopId], references: [id], onDelete: SetNull)
+}
+
+model RefreshToken {
+  id        String @id @default(uuid()) @db.Uuid
+  userId    String @db.Uuid
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tokenHash String
+
+  expiresAt DateTime
+  revokedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([tokenHash])
+}
