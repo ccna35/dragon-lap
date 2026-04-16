@@ -6,7 +6,6 @@ import {
     Patch,
     Post,
     Query,
-    UseGuards,
 } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { Role } from '../common/enums/role.enum';

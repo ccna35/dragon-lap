@@ -23,6 +23,6 @@ export class ListLaptopsDto {
     maxPrice?: number;
 
     @IsOptional()
-    @IsIn(['price_asc', 'price_desc', 'newest'])
-    sort?: 'price_asc' | 'price_desc' | 'newest';
+    @IsIn(['price_asc', 'price_desc', 'newest', 'oldest'])
+    sort?: 'price_asc' | 'price_desc' | 'newest' | 'oldest';
 }

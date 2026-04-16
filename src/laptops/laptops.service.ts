@@ -3,7 +3,7 @@ import {
     Injectable,
     NotFoundException,
 } from '@nestjs/common';
-import { Prisma, UserRole } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import { CreateLaptopDto } from './dto/create-laptop.dto';
 import { UpdateLaptopDto } from './dto/update-laptop.dto';

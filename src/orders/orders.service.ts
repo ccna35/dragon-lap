@@ -11,7 +11,6 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
-import { OrderStatusEnum } from '../common/enums/order-status.enum';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { AdminListOrdersDto } from './dto/admin-list-orders.dto';
 
