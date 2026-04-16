@@ -5,7 +5,6 @@ import { LoginDto } from './dto/login.dto';
 import { Public } from './decorators/public.decorator';
 import { Request, Response } from 'express';
 import { LocalAuthenticatedRequest } from './authenticatedRequest.type';
-import { AuthGuard } from '@nestjs/passport';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 
 @Controller('auth')

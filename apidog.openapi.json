@@ -21,7 +21,7 @@
   ],
   "security": [
     {
-      "bearerAuth": []
+      "cookieAuth": []
     }
   ],
   "paths": {
@@ -46,14 +46,48 @@
         },
         "responses": {
           "201": {
-            "description": "Registered",
+            "description": "Registered — tokens are set as HTTP-only cookies (access_token, refresh_token)",
+            "headers": {
+              "Set-Cookie": {
+                "description": "access_token (5 min) and refresh_token (7 days) HTTP-only cookies",
+                "schema": { "type": "string" }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/UserPublic" }
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": { "$ref": "#/components/schemas/UserPublic" }
+                  }
+                }
               }
             }
           },
           "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Logout — revokes refresh token and clears auth cookies",
+        "responses": {
+          "201": {
+            "description": "Logged out",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": { "type": "boolean" }
+                  }
+                },
+                "example": { "ok": true }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
         }
       }
     },
@@ -76,18 +110,22 @@
         },
         "responses": {
           "201": {
-            "description": "Logged in",
+            "description": "Logged in — tokens are set as HTTP-only cookies (access_token, refresh_token)",
+            "headers": {
+              "Set-Cookie": {
+                "description": "access_token (5 min) and refresh_token (7 days) HTTP-only cookies",
+                "schema": { "type": "string" }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "accessToken": { "type": "string" },
                     "user": { "$ref": "#/components/schemas/UserLoginView" }
                   }
                 },
                 "example": {
-                  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
                   "user": {
                     "id": "4c3fdd44-f9de-44b3-b3fc-a1818eeff511",
                     "fullName": "Store Admin",
@@ -660,10 +698,11 @@
   },
   "components": {
     "securitySchemes": {
-      "bearerAuth": {
-        "type": "http",
-        "scheme": "bearer",
-        "bearerFormat": "JWT"
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "access_token",
+        "description": "HTTP-only JWT cookie set automatically on login/register. Send requests with credentials (withCredentials: true)."
       }
     },
     "responses": {
