@@ -236,4 +236,62 @@ export class OrdersService {
             return updatedOrder;
         });
     }
+
+    async getAdminStats() {
+        const LOW_STOCK_THRESHOLD = 5;
+        const RECENT_ORDERS_LIMIT = 5;
+        const SALES_HISTORY_DAYS = 30;
+
+        const [totalRevenueResult, ordersCount, customersCount, lowStockCount, recentOrders] =
+            await Promise.all([
+                this.prisma.order.aggregate({
+                    where: { status: OrderStatus.DELIVERED },
+                    _sum: { total: true },
+                }),
+                this.prisma.order.count(),
+                this.prisma.user.count({ where: { role: 'CUSTOMER' } }),
+                this.prisma.laptop.count({
+                    where: { isPublished: true, stock: { lte: LOW_STOCK_THRESHOLD } },
+                }),
+                this.prisma.order.findMany({
+                    take: RECENT_ORDERS_LIMIT,
+                    orderBy: { createdAt: 'desc' },
+                    include: {
+                        items: true,
+                        user: {
+                            select: { id: true, fullName: true, email: true, phone: true },
+                        },
+                    },
+                }),
+            ]);
+
+        const since = new Date();
+        since.setDate(since.getDate() - SALES_HISTORY_DAYS);
+
+        const deliveredOrders = await this.prisma.order.findMany({
+            where: { status: OrderStatus.DELIVERED, placedAt: { gte: since } },
+            select: { placedAt: true, total: true },
+            orderBy: { placedAt: 'asc' },
+        });
+
+        const salesByDate = new Map<string, number>();
+        for (const order of deliveredOrders) {
+            const date = order.placedAt.toISOString().split('T')[0];
+            salesByDate.set(date, (salesByDate.get(date) ?? 0) + this.toNumber(order.total));
+        }
+
+        const salesHistory = Array.from(salesByDate.entries()).map(([date, amount]) => ({
+            date,
+            amount: amount.toFixed(2),
+        }));
+
+        return {
+            totalRevenue: (totalRevenueResult._sum.total ?? 0).toString(),
+            ordersCount,
+            customersCount,
+            lowStockCount,
+            salesHistory,
+            recentOrders,
+        };
+    }
 }

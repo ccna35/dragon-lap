@@ -58,4 +58,10 @@ export class OrdersController {
     ) {
         return this.ordersService.updateOrderStatus(id, dto);
     }
+
+    @Get('admin/stats')
+    @Roles(Role.ADMIN)
+    getAdminStats() {
+        return this.ordersService.getAdminStats();
+    }
 }

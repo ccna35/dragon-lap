@@ -185,4 +185,31 @@ export class AuthService {
         const { passwordHash, ...safeUser } = user;
         return safeUser;
     }
+
+    async refresh(
+        refreshToken: string,
+    ): Promise<{ user: Omit<User, 'passwordHash'>; tokens: AuthTokens }> {
+        const payload = await this.verifyRefreshToken(refreshToken);
+        const activeToken = await this.findActiveRefreshToken(payload.userId, refreshToken);
+
+        if (!activeToken) {
+            throw new UnauthorizedException('Refresh token not recognized');
+        }
+
+        await this.prisma.refreshToken.update({
+            where: { id: activeToken.id },
+            data: { revokedAt: new Date() },
+        });
+
+        const user = await this.usersService.findById(payload.userId);
+
+        // In case the user was deleted or deactivated after the token was issued
+        if (!user || !user.isActive) {
+            throw new UnauthorizedException('User not found or inactive');
+        }
+
+        const tokens = await this.issueTokens(user);
+
+        return { user: this.toSafeUser(user), tokens };
+    }
 }

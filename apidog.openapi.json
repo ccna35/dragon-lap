@@ -694,6 +694,24 @@
           "404": { "$ref": "#/components/responses/NotFound" }
         }
       }
+    },
+    "/admin/stats": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get store statistics and recent activity (admin only)",
+        "responses": {
+          "200": {
+            "description": "Store statistics",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AdminStats" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
     }
   },
   "components": {
@@ -997,6 +1015,29 @@
             ]
           },
           "error": { "type": "string" }
+        }
+      },
+      "AdminStats": {
+        "type": "object",
+        "properties": {
+          "totalRevenue": { "type": "string", "example": "1250000.00" },
+          "ordersCount": { "type": "integer" },
+          "customersCount": { "type": "integer" },
+          "lowStockCount": { "type": "integer" },
+          "salesHistory": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "date": { "type": "string", "format": "date" },
+                "amount": { "type": "string" }
+              }
+            }
+          },
+          "recentOrders": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/OrderWithItemsAndUser" }
+          }
         }
       }
     }
