@@ -183,6 +183,24 @@ export class LaptopsService {
         return this.mapLaptop(laptop);
     }
 
+    async getPublicBySlug(slug: string) {
+        const laptop = await this.prisma.laptop.findFirst({
+            where: {
+                slug,
+                isPublished: true,
+            },
+            include: {
+                images: true,
+            },
+        });
+
+        if (!laptop) {
+            throw new NotFoundException('Laptop not found');
+        }
+
+        return this.mapLaptop(laptop);
+    }
+
     async listAdmin(query: ListLaptopsDto) {
         const where: Prisma.LaptopWhereInput = {
             ...(query.search

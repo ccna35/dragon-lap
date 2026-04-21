@@ -40,6 +40,7 @@ export class AuthController {
         return { ok: true };
     }
 
+    @Public()
     @Post('refresh')
     async refresh(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
         const refreshToken = request.cookies?.refresh_token;

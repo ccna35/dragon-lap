@@ -29,9 +29,9 @@ export class LaptopsController {
     }
 
     @Public()
-    @Get('laptops/:id')
-    getPublicById(@Param('id') id: string) {
-        return this.laptopsService.getPublicById(id);
+    @Get('laptops/:slug')
+    getPublicBySlug(@Param('slug') slug: string) {
+        return this.laptopsService.getPublicBySlug(slug);
     }
 
     @Get('admin/laptops')
