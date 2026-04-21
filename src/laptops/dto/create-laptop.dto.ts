@@ -61,10 +61,6 @@ export class CreateLaptopDto {
     os?: string;
 
     @IsOptional()
-    @IsString()
-    imageUrl?: string;
-
-    @IsOptional()
     @IsBoolean()
     isPublished?: boolean;
 }

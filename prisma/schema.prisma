@@ -40,13 +40,18 @@ model User {
   refreshTokens        RefreshToken[]
 }
 
+enum LaptopImageKind {
+  FEATURED
+  GALLERY
+}
+
 model Laptop {
-  id               String      @id @default(uuid()) @db.Uuid
+  id               String        @id @default(uuid()) @db.Uuid
   title            String
-  slug             String      @unique
+  slug             String        @unique
   brand            String
   model            String
-  price            Decimal     @db.Decimal(10, 2)
+  price            Decimal       @db.Decimal(10, 2)
   stock            Int
   shortDescription String?
   description      String?
@@ -56,12 +61,28 @@ model Laptop {
   gpu              String?
   screenSize       String?
   os               String?
-  imageUrl         String?
-  isPublished      Boolean     @default(true)
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
+  isPublished      Boolean       @default(true)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
   cartItems        CartItem[]
   orderItems       OrderItem[]
+  images           LaptopImage[]
+}
+
+model LaptopImage {
+  id        String          @id @default(uuid()) @db.Uuid
+  laptopId  String          @db.Uuid
+  kind      LaptopImageKind
+  url       String
+  publicId  String
+  position  Int
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  laptop Laptop @relation(fields: [laptopId], references: [id], onDelete: Cascade)
+
+  @@index([laptopId])
+  @@unique([laptopId, kind, position])
 }
 
 model CartItem {

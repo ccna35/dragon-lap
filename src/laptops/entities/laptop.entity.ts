@@ -1,3 +1,11 @@
+export class LaptopImageEntity {
+    id: string;
+    kind: 'FEATURED' | 'GALLERY';
+    url: string;
+    publicId: string;
+    position: number;
+}
+
 export class LaptopEntity {
     id: string;
     title: string;
@@ -14,7 +22,8 @@ export class LaptopEntity {
     gpu?: string | null;
     screenSize?: string | null;
     os?: string | null;
-    imageUrl?: string | null;
+    featuredImage: LaptopImageEntity | null;
+    galleryImages: LaptopImageEntity[];
     isPublished: boolean;
     createdAt: Date;
     updatedAt: Date;

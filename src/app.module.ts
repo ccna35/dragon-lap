@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import databaseConfig from './config/database.config';
+import cloudinaryConfig from './config/cloudinary.config';
 import { PrismaModule } from './prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -12,7 +13,7 @@ import { OrdersModule } from './orders/orders.module';
     imports: [
         ConfigModule.forRoot({
             isGlobal: true,
-            load: [databaseConfig],
+            load: [databaseConfig, cloudinaryConfig],
             envFilePath: '.env',
         }),
         PrismaModule,

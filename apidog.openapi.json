@@ -298,7 +298,6 @@
                 "gpu": "RTX 4060",
                 "screenSize": "16 inch",
                 "os": "Windows 11",
-                "imageUrl": "https://example.com/legion-pro5.jpg",
                 "shortDescription": "High-performance gaming laptop",
                 "description": "QHD+ display, high refresh rate, RTX graphics",
                 "isPublished": true
@@ -387,7 +386,93 @@
         }
       }
     },
-    "/cart": {
+    "/admin/laptops/{id}/images/sign": {
+      "post": {
+        "tags": ["Admin", "Laptops"],
+        "summary": "Generate Cloudinary signed upload URLs (admin)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SignLaptopImagesDto" },
+              "example": {
+                "slots": ["featured", "gallery_1"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Signed upload parameters",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SignedUploadResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/admin/laptops/{id}/images": {
+      "patch": {
+        "tags": ["Admin", "Laptops"],
+        "summary": "Attach uploaded images to laptop (admin)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SetLaptopImagesDto" },
+              "example": {
+                "featured": {
+                  "url": "https://res.cloudinary.com/your-cloud/image/upload/v1234567890/dragon-lap/laptops/uuid/featured.jpg",
+                  "publicId": "dragon-lap/laptops/uuid/featured"
+                },
+                "gallery": [
+                  {
+                    "url": "https://res.cloudinary.com/your-cloud/image/upload/v1234567890/dragon-lap/laptops/uuid/gallery_1.jpg",
+                    "publicId": "dragon-lap/laptops/uuid/gallery_1"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Images attached",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Laptop" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
       "get": {
         "tags": ["Cart"],
         "summary": "Get current customer cart",
@@ -833,7 +918,6 @@
           "gpu": { "type": "string" },
           "screenSize": { "type": "string" },
           "os": { "type": "string" },
-          "imageUrl": { "type": "string" },
           "isPublished": { "type": "boolean" }
         }
       },
@@ -875,6 +959,75 @@
           "status": { "$ref": "#/components/schemas/OrderStatusEnum" }
         }
       },
+      "SignLaptopImagesDto": {
+        "type": "object",
+        "properties": {
+          "slots": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 4,
+            "items": {
+              "type": "string",
+              "enum": ["featured", "gallery_1", "gallery_2", "gallery_3"]
+            },
+            "description": "Slot names to generate signatures for. If omitted, all slots are signed."
+          }
+        }
+      },
+      "CloudinarySignature": {
+        "type": "object",
+        "properties": {
+          "slot": { "type": "string" },
+          "uploadUrl": { "type": "string", "format": "uri" },
+          "cloudName": { "type": "string" },
+          "apiKey": { "type": "string" },
+          "folder": { "type": "string" },
+          "publicId": { "type": "string" },
+          "timestamp": { "type": "integer" },
+          "signature": { "type": "string" },
+          "description": "Use these values to construct FormData for direct Cloudinary upload"
+        }
+      },
+      "SignedUploadResponse": {
+        "type": "object",
+        "properties": {
+          "laptopId": { "type": "string", "format": "uuid" },
+          "signatures": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/CloudinarySignature" }
+          }
+        }
+      },
+      "LaptopImageInputDto": {
+        "type": "object",
+        "required": ["url", "publicId"],
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Cloudinary image URL after upload"
+          },
+          "publicId": {
+            "type": "string",
+            "description": "Cloudinary public ID of uploaded image"
+          }
+        }
+      },
+      "SetLaptopImagesDto": {
+        "type": "object",
+        "required": ["featured", "gallery"],
+        "properties": {
+          "featured": {
+            "$ref": "#/components/schemas/LaptopImageInputDto"
+          },
+          "gallery": {
+            "type": "array",
+            "maxItems": 3,
+            "items": { "$ref": "#/components/schemas/LaptopImageInputDto" },
+            "description": "Up to 3 gallery images"
+          }
+        }
+      },
       "UserPublic": {
         "type": "object",
         "properties": {
@@ -897,6 +1050,20 @@
           "role": { "$ref": "#/components/schemas/Role" }
         }
       },
+      "LaptopImageKind": {
+        "type": "string",
+        "enum": ["FEATURED", "GALLERY"]
+      },
+      "LaptopImage": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "kind": { "$ref": "#/components/schemas/LaptopImageKind" },
+          "url": { "type": "string", "format": "uri" },
+          "publicId": { "type": "string" },
+          "position": { "type": "integer" }
+        }
+      },
       "Laptop": {
         "type": "object",
         "properties": {
@@ -915,7 +1082,16 @@
           "gpu": { "type": "string", "nullable": true },
           "screenSize": { "type": "string", "nullable": true },
           "os": { "type": "string", "nullable": true },
-          "imageUrl": { "type": "string", "nullable": true },
+          "featuredImage": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/LaptopImage" },
+              { "type": "null" }
+            ]
+          },
+          "galleryImages": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/LaptopImage" }
+          },
           "isPublished": { "type": "boolean" },
           "createdAt": { "type": "string", "format": "date-time" },
           "updatedAt": { "type": "string", "format": "date-time" }
@@ -1092,6 +1268,18 @@
         "GET /users"
       ],
       "expectedOutcome": "Admin can operate store inventory and order workflow"
+    },
+    {
+      "id": "UC-6",
+      "title": "Upload laptop images via Cloudinary",
+      "actor": "Admin",
+      "preconditions": ["Laptop exists", "Cloudinary account configured"],
+      "mainFlow": [
+        "POST /admin/laptops/{id}/images/sign (get signed params)",
+        "Direct upload to Cloudinary using returned signature",
+        "PATCH /admin/laptops/{id}/images (attach uploaded URLs to laptop)"
+      ],
+      "expectedOutcome": "Laptop has 1 featured and up to 3 gallery images persisted"
     }
   ],
   "x-scenarios": [

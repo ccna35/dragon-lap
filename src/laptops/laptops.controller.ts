@@ -6,7 +6,7 @@ import {
     Param,
     Patch,
     Post,
-    Query
+    Query,
 } from '@nestjs/common';
 import { LaptopsService } from './laptops.service';
 import { ListLaptopsDto } from './dto/list-laptops.dto';
@@ -15,6 +15,8 @@ import { CreateLaptopDto } from './dto/create-laptop.dto';
 import { UpdateLaptopDto } from './dto/update-laptop.dto';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { Public } from 'src/auth/decorators/public.decorator';
+import { SignLaptopImagesDto } from './dto/sign-laptop-images.dto';
+import { SetLaptopImagesDto } from './dto/set-laptop-images.dto';
 
 @Controller()
 export class LaptopsController {
@@ -48,6 +50,21 @@ export class LaptopsController {
     @Roles(Role.ADMIN)
     update(@Param('id') id: string, @Body() dto: UpdateLaptopDto) {
         return this.laptopsService.update(id, dto);
+    }
+
+    @Post('admin/laptops/:id/images/sign')
+    @Roles(Role.ADMIN)
+    signImageUploads(
+        @Param('id') id: string,
+        @Body() dto: SignLaptopImagesDto,
+    ) {
+        return this.laptopsService.signImageUploads(id, dto);
+    }
+
+    @Patch('admin/laptops/:id/images')
+    @Roles(Role.ADMIN)
+    setImages(@Param('id') id: string, @Body() dto: SetLaptopImagesDto) {
+        return this.laptopsService.setImages(id, dto);
     }
 
     @Delete('admin/laptops/:id')
