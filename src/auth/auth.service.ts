@@ -9,7 +9,7 @@ import { PrismaService } from '../prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { UsersService } from 'src/users/users.service';
-import { User, UserRole, RefreshToken } from '@prisma/client';
+import { CartStatus, Prisma, RefreshToken, User, UserRole } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
 
@@ -48,9 +48,19 @@ export class AuthService {
         return { user: this.toSafeUser(user), tokens };
     }
 
-    async login(user: User): Promise<{ user: Omit<User, 'passwordHash'>; tokens: AuthTokens }> {
+    async login(
+        user: User,
+        guestSessionId?: string,
+    ): Promise<{
+        user: Omit<User, 'passwordHash'>;
+        tokens: AuthTokens;
+        mergedGuestCart: boolean;
+    }> {
+        const mergedGuestCart = guestSessionId
+            ? await this.mergeGuestCartOnLogin(user.id, guestSessionId)
+            : false;
         const tokens = await this.issueTokens(user);
-        return { user: this.toSafeUser(user), tokens };
+        return { user: this.toSafeUser(user), tokens, mergedGuestCart };
     }
 
     async validateUser(email: string, password: string): Promise<User | null> {
@@ -211,5 +221,119 @@ export class AuthService {
         const tokens = await this.issueTokens(user);
 
         return { user: this.toSafeUser(user), tokens };
+    }
+
+    private async mergeGuestCartOnLogin(
+        userId: string,
+        guestSessionId: string,
+    ): Promise<boolean> {
+        if (!guestSessionId) {
+            return false;
+        }
+
+        return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+            const guestCart = await tx.cart.findFirst({
+                where: {
+                    guestSessionId,
+                    status: CartStatus.ACTIVE,
+                },
+                include: {
+                    items: {
+                        include: {
+                            laptop: true,
+                        },
+                    },
+                },
+                orderBy: { createdAt: 'desc' },
+            });
+
+            if (!guestCart) {
+                return false;
+            }
+
+            const customerCart = await tx.cart.findFirst({
+                where: {
+                    userId,
+                    status: CartStatus.ACTIVE,
+                },
+                include: {
+                    items: {
+                        include: {
+                            laptop: true,
+                        },
+                    },
+                },
+                orderBy: { createdAt: 'desc' },
+            });
+
+            if (!customerCart) {
+                await tx.cart.update({
+                    where: { id: guestCart.id },
+                    data: {
+                        userId,
+                        guestSessionId: null,
+                    },
+                });
+                return true;
+            }
+
+            const customerItemsByLaptopId = new Map(
+                customerCart.items.map((item) => [item.laptopId, item]),
+            );
+
+            for (const guestItem of guestCart.items) {
+                const matchingCustomerItem = customerItemsByLaptopId.get(guestItem.laptopId);
+                if (!matchingCustomerItem) {
+                    if (guestItem.quantity > guestItem.laptop.stock) {
+                        throw new BadRequestException(
+                            `Not enough stock for '${guestItem.laptop.title}'`,
+                        );
+                    }
+
+                    const created = await tx.cartItem.create({
+                        data: {
+                            cartId: customerCart.id,
+                            laptopId: guestItem.laptopId,
+                            quantity: guestItem.quantity,
+                        },
+                    });
+
+                    customerItemsByLaptopId.set(created.laptopId, {
+                        ...guestItem,
+                        id: created.id,
+                        cartId: created.cartId,
+                        createdAt: created.createdAt,
+                        updatedAt: created.updatedAt,
+                    });
+                    continue;
+                }
+
+                const mergedQuantity = matchingCustomerItem.quantity + guestItem.quantity;
+                if (mergedQuantity > guestItem.laptop.stock) {
+                    throw new BadRequestException(
+                        `Not enough stock for '${guestItem.laptop.title}'`,
+                    );
+                }
+
+                await tx.cartItem.update({
+                    where: { id: matchingCustomerItem.id },
+                    data: {
+                        quantity: mergedQuantity,
+                    },
+                });
+            }
+
+            await tx.cartItem.deleteMany({ where: { cartId: guestCart.id } });
+
+            await tx.cart.update({
+                where: { id: guestCart.id },
+                data: {
+                    status: CartStatus.MERGED,
+                    guestSessionId: null,
+                },
+            });
+
+            return true;
+        });
     }
 }

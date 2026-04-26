@@ -6,6 +6,13 @@ export class LaptopImageEntity {
     position: number;
 }
 
+export class LaptopCategoryEntity {
+    id: string;
+    name: string;
+    slug: string;
+    description?: string | null;
+}
+
 export class LaptopEntity {
     id: string;
     title: string;
@@ -22,6 +29,8 @@ export class LaptopEntity {
     gpu?: string | null;
     screenSize?: string | null;
     os?: string | null;
+    categoryId?: string | null;
+    category: LaptopCategoryEntity | null;
     featuredImage: LaptopImageEntity | null;
     galleryImages: LaptopImageEntity[];
     isPublished: boolean;

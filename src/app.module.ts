@@ -8,6 +8,7 @@ import { UsersModule } from './users/users.module';
 import { LaptopsModule } from './laptops/laptops.module';
 import { CartModule } from './cart/cart.module';
 import { OrdersModule } from './orders/orders.module';
+import { CategoriesModule } from './categories/categories.module';
 
 @Module({
     imports: [
@@ -20,6 +21,7 @@ import { OrdersModule } from './orders/orders.module';
         AuthModule,
         UsersModule,
         LaptopsModule,
+        CategoriesModule,
         CartModule,
         OrdersModule,
     ],

@@ -3,6 +3,7 @@ import {
     IsNumber,
     IsOptional,
     IsString,
+    IsUUID,
     Min,
 } from 'class-validator';
 
@@ -59,6 +60,10 @@ export class CreateLaptopDto {
     @IsOptional()
     @IsString()
     os?: string;
+
+    @IsOptional()
+    @IsUUID()
+    categoryId?: string;
 
     @IsOptional()
     @IsBoolean()

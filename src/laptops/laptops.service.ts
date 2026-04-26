@@ -17,6 +17,7 @@ import { LaptopEntity } from './entities/laptop.entity';
 type LaptopWithImages = Prisma.LaptopGetPayload<{
     include: {
         images: true;
+        category: true;
     };
 }>;
 
@@ -52,12 +53,20 @@ export class LaptopsService {
                         { title: { contains: query.search, mode: 'insensitive' } },
                         { brand: { contains: query.search, mode: 'insensitive' } },
                         { model: { contains: query.search, mode: 'insensitive' } },
+                        {
+                            category: {
+                                is: {
+                                    name: { contains: query.search, mode: 'insensitive' },
+                                },
+                            },
+                        },
                     ],
                 }
                 : {}),
             ...(query.brand
                 ? { brand: { equals: query.brand, mode: 'insensitive' } }
                 : {}),
+            ...(query.categoryId ? { categoryId: query.categoryId } : {}),
             ...(query.minPrice !== undefined || query.maxPrice !== undefined
                 ? {
                     price: {
@@ -72,7 +81,19 @@ export class LaptopsService {
     private getOrderBy(sort?: ListLaptopsDto['sort']): Prisma.LaptopOrderByWithRelationInput {
         if (sort === 'price_asc') return { price: 'asc' };
         if (sort === 'price_desc') return { price: 'desc' };
+        if (sort === 'oldest') return { createdAt: 'asc' };
         return { createdAt: 'desc' };
+    }
+
+    private async assertCategoryExists(categoryId: string): Promise<void> {
+        const category = await this.prisma.category.findUnique({
+            where: { id: categoryId },
+            select: { id: true },
+        });
+
+        if (!category) {
+            throw new BadRequestException('Category not found');
+        }
     }
 
     private getCloudinaryConfig() {
@@ -145,6 +166,15 @@ export class LaptopsService {
             gpu: laptop.gpu,
             screenSize: laptop.screenSize,
             os: laptop.os,
+            categoryId: laptop.categoryId,
+            category: laptop.category
+                ? {
+                    id: laptop.category.id,
+                    name: laptop.category.name,
+                    slug: laptop.category.slug,
+                    description: laptop.category.description,
+                }
+                : null,
             featuredImage,
             galleryImages,
             isPublished: laptop.isPublished,
@@ -159,6 +189,7 @@ export class LaptopsService {
             orderBy: this.getOrderBy(query.sort),
             include: {
                 images: true,
+                category: true,
             },
         });
 
@@ -173,6 +204,7 @@ export class LaptopsService {
             },
             include: {
                 images: true,
+                category: true,
             },
         });
 
@@ -191,6 +223,7 @@ export class LaptopsService {
             },
             include: {
                 images: true,
+                category: true,
             },
         });
 
@@ -209,12 +242,20 @@ export class LaptopsService {
                         { title: { contains: query.search, mode: 'insensitive' } },
                         { brand: { contains: query.search, mode: 'insensitive' } },
                         { model: { contains: query.search, mode: 'insensitive' } },
+                        {
+                            category: {
+                                is: {
+                                    name: { contains: query.search, mode: 'insensitive' },
+                                },
+                            },
+                        },
                     ],
                 }
                 : {}),
             ...(query.brand
                 ? { brand: { equals: query.brand, mode: 'insensitive' } }
                 : {}),
+            ...(query.categoryId ? { categoryId: query.categoryId } : {}),
         };
 
         const laptops = await this.prisma.laptop.findMany({
@@ -222,13 +263,34 @@ export class LaptopsService {
             orderBy: this.getOrderBy(query.sort),
             include: {
                 images: true,
+                category: true,
             },
         });
 
         return laptops.map((laptop) => this.mapLaptop(laptop));
     }
 
+    async getAdminById(id: string) {
+        const laptop = await this.prisma.laptop.findUnique({
+            where: { id },
+            include: {
+                images: true,
+                category: true,
+            },
+        });
+
+        if (!laptop) {
+            throw new NotFoundException('Laptop not found');
+        }
+
+        return this.mapLaptop(laptop);
+    }
+
     async create(dto: CreateLaptopDto) {
+        if (dto.categoryId) {
+            await this.assertCategoryExists(dto.categoryId);
+        }
+
         const slug = this.slugify(dto.slug || dto.title);
         if (!slug) {
             throw new BadRequestException('Invalid slug/title');
@@ -239,14 +301,24 @@ export class LaptopsService {
             throw new BadRequestException('Laptop slug already exists');
         }
 
+        const { price, categoryId, ...rest } = dto;
+
         const created = await this.prisma.laptop.create({
             data: {
-                ...dto,
+                ...rest,
                 slug,
-                price: new Prisma.Decimal(dto.price),
+                price: new Prisma.Decimal(price),
+                ...(categoryId
+                    ? {
+                        category: {
+                            connect: { id: categoryId },
+                        },
+                    }
+                    : {}),
             },
             include: {
                 images: true,
+                category: true,
             },
         });
 
@@ -259,10 +331,23 @@ export class LaptopsService {
             throw new NotFoundException('Laptop not found');
         }
 
+        if (dto.categoryId !== undefined) {
+            await this.assertCategoryExists(dto.categoryId);
+        }
+
+        const { price, categoryId, ...rest } = dto;
+
         const data: Prisma.LaptopUpdateInput = {
-            ...dto,
-            ...(dto.price !== undefined
-                ? { price: new Prisma.Decimal(dto.price) }
+            ...rest,
+            ...(price !== undefined
+                ? { price: new Prisma.Decimal(price) }
+                : {}),
+            ...(categoryId !== undefined
+                ? {
+                    category: {
+                        connect: { id: categoryId },
+                    },
+                }
                 : {}),
         };
 
@@ -280,6 +365,7 @@ export class LaptopsService {
             data,
             include: {
                 images: true,
+                category: true,
             },
         });
 
@@ -374,6 +460,7 @@ export class LaptopsService {
                 where: { id },
                 include: {
                     images: true,
+                    category: true,
                 },
             });
         });
@@ -398,6 +485,7 @@ export class LaptopsService {
             },
             include: {
                 images: true,
+                category: true,
             },
         });
 

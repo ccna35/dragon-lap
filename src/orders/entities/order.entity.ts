@@ -3,7 +3,9 @@ import { PaymentMethodEnum } from '../../common/enums/payment-method.enum';
 
 export class OrderEntity {
     id: string;
-    userId: string;
+    userId?: string | null;
+    ownerType: 'CUSTOMER' | 'GUEST';
+    guestSessionId?: string | null;
     status: OrderStatusEnum;
     paymentMethod: PaymentMethodEnum;
     fullName: string;

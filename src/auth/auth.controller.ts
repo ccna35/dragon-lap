@@ -3,13 +3,21 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { Public } from './decorators/public.decorator';
+import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
 import { LocalAuthenticatedRequest } from './authenticatedRequest.type';
 import { LocalAuthGuard } from './guards/local-auth.guard';
+import {
+    clearGuestSessionIdCookie,
+    GUEST_SESSION_COOKIE,
+} from 'src/common/utils/guest-session.util';
 
 @Controller('auth')
 export class AuthController {
-    constructor(private readonly authService: AuthService) { }
+    constructor(
+        private readonly authService: AuthService,
+        private readonly config: ConfigService,
+    ) { }
 
     @Public()
     @Post('register')
@@ -27,8 +35,17 @@ export class AuthController {
         @Res({ passthrough: true }) response: Response,
         @Body() _dto: LoginDto,
     ) {
-        const { user, tokens } = await this.authService.login(request.user);
+        const guestSessionId = request.cookies?.[GUEST_SESSION_COOKIE];
+        const { user, tokens, mergedGuestCart } = await this.authService.login(
+            request.user,
+            guestSessionId,
+        );
         this.authService.setAuthCookies(response, tokens);
+
+        if (mergedGuestCart) {
+            clearGuestSessionIdCookie(response, this.config);
+        }
+
         return { user };
     }
 

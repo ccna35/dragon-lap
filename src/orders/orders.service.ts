@@ -5,6 +5,7 @@ import {
     NotFoundException,
 } from '@nestjs/common';
 import {
+    CartStatus,
     OrderStatus,
     PaymentMethod,
     Prisma,
@@ -23,6 +24,10 @@ const ALLOWED_STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
     CANCELLED: [],
 };
 
+type OwnerContext =
+    | { ownerType: 'CUSTOMER'; userId: string }
+    | { ownerType: 'GUEST'; guestSessionId: string };
+
 @Injectable()
 export class OrdersService {
     constructor(private readonly prisma: PrismaService) { }
@@ -32,15 +37,40 @@ export class OrdersService {
     }
 
     async createOrder(userId: string, dto: CreateOrderDto) {
+        return this.createOrderForOwner(
+            this.resolveOwnerContext({ userId }),
+            dto,
+        );
+    }
+
+    async createGuestOrder(guestSessionId: string, dto: CreateOrderDto) {
+        return this.createOrderForOwner(
+            this.resolveOwnerContext({ guestSessionId }),
+            dto,
+        );
+    }
+
+    private async createOrderForOwner(owner: OwnerContext, dto: CreateOrderDto) {
         return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-            const cartItems = await tx.cartItem.findMany({
-                where: { userId },
-                include: { laptop: true },
+            const cart = await tx.cart.findFirst({
+                where: {
+                    status: CartStatus.ACTIVE,
+                    ...this.getOwnerWhere(owner),
+                },
+                include: {
+                    items: {
+                        include: {
+                            laptop: true,
+                        },
+                    },
+                },
             });
 
-            if (cartItems.length === 0) {
+            if (!cart || cart.items.length === 0) {
                 throw new BadRequestException('Cart is empty');
             }
+
+            const cartItems = cart.items;
 
             for (const item of cartItems) {
                 if (!item.laptop.isPublished) {
@@ -70,7 +100,9 @@ export class OrdersService {
 
             const order = await tx.order.create({
                 data: {
-                    userId,
+                    ownerType: owner.ownerType,
+                    userId: owner.ownerType === 'CUSTOMER' ? owner.userId : null,
+                    guestSessionId: owner.ownerType === 'GUEST' ? owner.guestSessionId : null,
                     status: OrderStatus.PENDING,
                     paymentMethod: PaymentMethod.COD,
                     fullName: dto.fullName,
@@ -112,13 +144,46 @@ export class OrdersService {
                 });
             }
 
-            await tx.cartItem.deleteMany({ where: { userId } });
+            await tx.cart.update({
+                where: { id: cart.id },
+                data: { status: CartStatus.CONVERTED },
+            });
 
             return tx.order.findUnique({
                 where: { id: order.id },
                 include: { items: true },
             });
         });
+    }
+
+    private resolveOwnerContext(input: {
+        userId?: string | null;
+        guestSessionId?: string | null;
+    }): OwnerContext {
+        if (input.userId && input.guestSessionId) {
+            throw new BadRequestException('Invalid ownership context');
+        }
+
+        if (input.userId) {
+            return { ownerType: 'CUSTOMER', userId: input.userId };
+        }
+
+        if (input.guestSessionId) {
+            return {
+                ownerType: 'GUEST',
+                guestSessionId: input.guestSessionId,
+            };
+        }
+
+        throw new BadRequestException('Missing ownership context');
+    }
+
+    private getOwnerWhere(owner: OwnerContext): Prisma.CartWhereInput {
+        if (owner.ownerType === 'CUSTOMER') {
+            return { userId: owner.userId };
+        }
+
+        return { guestSessionId: owner.guestSessionId };
     }
 
     getMyOrders(userId: string) {

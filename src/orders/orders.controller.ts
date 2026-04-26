@@ -6,7 +6,11 @@ import {
     Patch,
     Post,
     Query,
+    Req,
+    Res,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Request, Response } from 'express';
 import { OrdersService } from './orders.service';
 import { Role } from '../common/enums/role.enum';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -15,15 +19,31 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { AdminListOrdersDto } from './dto/admin-list-orders.dto';
 import { Roles } from 'src/auth/decorators/roles.decorator';
+import { Public } from 'src/auth/decorators/public.decorator';
+import { ensureGuestSessionId } from 'src/common/utils/guest-session.util';
 
 @Controller()
 export class OrdersController {
-    constructor(private readonly ordersService: OrdersService) { }
+    constructor(
+        private readonly ordersService: OrdersService,
+        private readonly config: ConfigService,
+    ) { }
 
     @Post('orders')
     @Roles(Role.CUSTOMER)
     createOrder(@CurrentUser() user: RequestUser, @Body() dto: CreateOrderDto) {
         return this.ordersService.createOrder(user.userId, dto);
+    }
+
+    @Public()
+    @Post('orders/guest')
+    createGuestOrder(
+        @Req() request: Request,
+        @Res({ passthrough: true }) response: Response,
+        @Body() dto: CreateOrderDto,
+    ) {
+        const guestSessionId = ensureGuestSessionId(request, response, this.config);
+        return this.ordersService.createGuestOrder(guestSessionId, dto);
     }
 
     @Get('orders/my')

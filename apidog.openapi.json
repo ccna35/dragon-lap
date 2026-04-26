@@ -14,6 +14,7 @@
   "tags": [
     { "name": "Auth" },
     { "name": "Users" },
+    { "name": "Categories" },
     { "name": "Laptops" },
     { "name": "Cart" },
     { "name": "Orders" },
@@ -178,6 +179,172 @@
         }
       }
     },
+    "/categories": {
+      "get": {
+        "tags": ["Categories"],
+        "summary": "List categories",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Categories",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Category" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/categories": {
+      "get": {
+        "tags": ["Admin", "Categories"],
+        "summary": "List categories (admin)",
+        "responses": {
+          "200": {
+            "description": "Categories",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Category" }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "post": {
+        "tags": ["Admin", "Categories"],
+        "summary": "Create category (admin)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateCategoryDto" },
+              "example": {
+                "name": "Gaming Laptops",
+                "slug": "gaming-laptops",
+                "description": "High-performance laptops for gaming and graphics workloads"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Category" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/admin/categories/{id}": {
+      "get": {
+        "tags": ["Admin", "Categories"],
+        "summary": "Get category by ID (admin)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Category",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Category" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "patch": {
+        "tags": ["Admin", "Categories"],
+        "summary": "Update category (admin)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateCategoryDto" },
+              "example": {
+                "name": "Premium Ultrabooks",
+                "description": "Lightweight premium laptops"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Category" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["Admin", "Categories"],
+        "summary": "Delete category (admin)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
     "/laptops": {
       "get": {
         "tags": ["Laptops"],
@@ -186,6 +353,11 @@
         "parameters": [
           { "name": "search", "in": "query", "schema": { "type": "string" } },
           { "name": "brand", "in": "query", "schema": { "type": "string" } },
+          {
+            "name": "categoryId",
+            "in": "query",
+            "schema": { "type": "string", "format": "uuid" }
+          },
           {
             "name": "minPrice",
             "in": "query",
@@ -201,7 +373,7 @@
             "in": "query",
             "schema": {
               "type": "string",
-              "enum": ["price_asc", "price_desc", "newest"]
+              "enum": ["price_asc", "price_desc", "newest", "oldest"]
             }
           }
         ],
@@ -254,11 +426,16 @@
           { "name": "search", "in": "query", "schema": { "type": "string" } },
           { "name": "brand", "in": "query", "schema": { "type": "string" } },
           {
+            "name": "categoryId",
+            "in": "query",
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
             "name": "sort",
             "in": "query",
             "schema": {
               "type": "string",
-              "enum": ["price_asc", "price_desc", "newest"]
+              "enum": ["price_asc", "price_desc", "newest", "oldest"]
             }
           }
         ],
@@ -298,6 +475,7 @@
                 "gpu": "RTX 4060",
                 "screenSize": "16 inch",
                 "os": "Windows 11",
+                "categoryId": "be54f9a8-6f99-4bb3-9f24-93e592c4493e",
                 "shortDescription": "High-performance gaming laptop",
                 "description": "QHD+ display, high refresh rate, RTX graphics",
                 "isPublished": true
@@ -414,7 +592,9 @@
             "description": "Signed upload parameters",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/SignedUploadResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/SignedUploadResponse"
+                }
               }
             }
           },
@@ -473,6 +653,7 @@
         }
       }
     },
+    "/cart": {
       "get": {
         "tags": ["Cart"],
         "summary": "Get current customer cart",
@@ -595,6 +776,141 @@
         }
       }
     },
+    "/cart/guest": {
+      "get": {
+        "tags": ["Cart"],
+        "summary": "Get guest cart using guest session cookie",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Guest cart items",
+            "headers": {
+              "Set-Cookie": {
+                "description": "guest_session_id HTTP-only cookie is set if missing",
+                "schema": { "type": "string" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/CartItemWithLaptop" }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/cart/guest/items": {
+      "post": {
+        "tags": ["Cart"],
+        "summary": "Add item to guest cart",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AddCartItemDto" },
+              "example": {
+                "laptopId": "78e13f7e-c53f-4f03-95f1-3f5d2fadb6c2",
+                "quantity": 1
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Added to guest cart",
+            "headers": {
+              "Set-Cookie": {
+                "description": "guest_session_id HTTP-only cookie is set if missing",
+                "schema": { "type": "string" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CartItemWithLaptop" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/cart/guest/items/{id}": {
+      "patch": {
+        "tags": ["Cart"],
+        "summary": "Update guest cart item quantity",
+        "security": [],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateCartItemDto" },
+              "example": { "quantity": 2 }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated guest cart item",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CartItemWithLaptop" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["Cart"],
+        "summary": "Remove guest cart item",
+        "security": [],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Removed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" }
+                  },
+                  "example": {
+                    "message": "Item removed from cart"
+                  }
+                }
+              }
+            }
+          },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
     "/orders": {
       "post": {
         "tags": ["Orders"],
@@ -628,6 +944,48 @@
           "400": { "$ref": "#/components/responses/BadRequest" },
           "401": { "$ref": "#/components/responses/Unauthorized" },
           "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/orders/guest": {
+      "post": {
+        "tags": ["Orders"],
+        "summary": "Place guest COD order from guest cart",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateOrderDto" },
+              "example": {
+                "fullName": "Guest User",
+                "phone": "01011223344",
+                "alternatePhone": "01099887766",
+                "city": "Cairo",
+                "area": "Nasr City",
+                "streetAddress": "Building 20, Street 10",
+                "notes": "Call before delivery"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Guest order placed",
+            "headers": {
+              "Set-Cookie": {
+                "description": "guest_session_id HTTP-only cookie is set if missing",
+                "schema": { "type": "string" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/OrderWithItems" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" }
         }
       }
     },
@@ -918,11 +1276,24 @@
           "gpu": { "type": "string" },
           "screenSize": { "type": "string" },
           "os": { "type": "string" },
+          "categoryId": { "type": "string", "format": "uuid" },
           "isPublished": { "type": "boolean" }
         }
       },
       "UpdateLaptopDto": {
         "allOf": [{ "$ref": "#/components/schemas/CreateLaptopDto" }]
+      },
+      "CreateCategoryDto": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string", "maxLength": 120 },
+          "slug": { "type": "string", "maxLength": 160 },
+          "description": { "type": "string", "maxLength": 500 }
+        }
+      },
+      "UpdateCategoryDto": {
+        "allOf": [{ "$ref": "#/components/schemas/CreateCategoryDto" }]
       },
       "AddCartItemDto": {
         "type": "object",
@@ -1082,6 +1453,13 @@
           "gpu": { "type": "string", "nullable": true },
           "screenSize": { "type": "string", "nullable": true },
           "os": { "type": "string", "nullable": true },
+          "categoryId": { "type": "string", "format": "uuid", "nullable": true },
+          "category": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/Category" },
+              { "type": "null" }
+            ]
+          },
           "featuredImage": {
             "oneOf": [
               { "$ref": "#/components/schemas/LaptopImage" },
@@ -1097,11 +1475,22 @@
           "updatedAt": { "type": "string", "format": "date-time" }
         }
       },
+      "Category": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "slug": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
       "CartItemWithLaptop": {
         "type": "object",
         "properties": {
           "id": { "type": "string", "format": "uuid" },
-          "userId": { "type": "string", "format": "uuid" },
+          "cartId": { "type": "string", "format": "uuid" },
           "laptopId": { "type": "string", "format": "uuid" },
           "quantity": { "type": "integer" },
           "createdAt": { "type": "string", "format": "date-time" },
@@ -1109,11 +1498,17 @@
           "laptop": { "$ref": "#/components/schemas/Laptop" }
         }
       },
+      "OrderOwnerType": {
+        "type": "string",
+        "enum": ["CUSTOMER", "GUEST"]
+      },
       "Order": {
         "type": "object",
         "properties": {
           "id": { "type": "string", "format": "uuid" },
-          "userId": { "type": "string", "format": "uuid" },
+          "userId": { "type": "string", "format": "uuid", "nullable": true },
+          "ownerType": { "$ref": "#/components/schemas/OrderOwnerType" },
+          "guestSessionId": { "type": "string", "nullable": true },
           "status": { "$ref": "#/components/schemas/OrderStatusEnum" },
           "paymentMethod": { "$ref": "#/components/schemas/PaymentMethod" },
           "fullName": { "type": "string" },
@@ -1165,13 +1560,18 @@
             "type": "object",
             "properties": {
               "user": {
-                "type": "object",
-                "properties": {
-                  "id": { "type": "string", "format": "uuid" },
-                  "fullName": { "type": "string" },
-                  "email": { "type": "string", "format": "email" },
-                  "phone": { "type": "string", "nullable": true }
-                }
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "id": { "type": "string", "format": "uuid" },
+                      "fullName": { "type": "string" },
+                      "email": { "type": "string", "format": "email" },
+                      "phone": { "type": "string", "nullable": true }
+                    }
+                  },
+                  { "type": "null" }
+                ]
               }
             }
           }
@@ -1280,6 +1680,18 @@
         "PATCH /admin/laptops/{id}/images (attach uploaded URLs to laptop)"
       ],
       "expectedOutcome": "Laptop has 1 featured and up to 3 gallery images persisted"
+    },
+    {
+      "id": "UC-7",
+      "title": "Guest cart and checkout",
+      "actor": "Guest",
+      "mainFlow": [
+        "POST /cart/guest/items",
+        "GET /cart/guest",
+        "PATCH /cart/guest/items/{id}",
+        "POST /orders/guest"
+      ],
+      "expectedOutcome": "Guest can shop and checkout using guest_session_id cookie without authentication"
     }
   ],
   "x-scenarios": [
@@ -1406,6 +1818,26 @@
       "setup": ["Ensure order current status is DELIVERED"],
       "expected": {
         "statusCode": 400
+      }
+    },
+    {
+      "id": "TC-GUEST-001",
+      "name": "Guest can add item to cart",
+      "request": {
+        "method": "POST",
+        "path": "/cart/guest/items",
+        "body": {
+          "laptopId": "78e13f7e-c53f-4f03-95f1-3f5d2fadb6c2",
+          "quantity": 1
+        }
+      },
+      "expected": {
+        "statusCode": 201,
+        "assertions": [
+          "response.id is uuid",
+          "response.cartId is uuid",
+          "Set-Cookie contains guest_session_id"
+        ]
       }
     },
     {

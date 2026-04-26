@@ -25,6 +25,18 @@ enum PaymentMethod {
   COD
 }
 
+enum OrderOwnerType {
+  CUSTOMER
+  GUEST
+}
+
+enum CartStatus {
+  ACTIVE
+  ABANDONED
+  CONVERTED
+  MERGED
+}
+
 model User {
   id           String     @id @default(uuid()) @db.Uuid
   fullName     String
@@ -35,7 +47,7 @@ model User {
   isActive     Boolean    @default(true)
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
-  cartItems    CartItem[]
+  carts        Cart[]
   orders       Order[]
   refreshTokens        RefreshToken[]
 }
@@ -43,6 +55,18 @@ model User {
 enum LaptopImageKind {
   FEATURED
   GALLERY
+}
+
+model Category {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  slug        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  laptops     Laptop[]
+
+  @@unique([name])
 }
 
 model Laptop {
@@ -61,12 +85,16 @@ model Laptop {
   gpu              String?
   screenSize       String?
   os               String?
+  categoryId       String?       @db.Uuid
   isPublished      Boolean       @default(true)
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
+  category         Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   cartItems        CartItem[]
   orderItems       OrderItem[]
   images           LaptopImage[]
+
+  @@index([categoryId])
 }
 
 model LaptopImage {
@@ -85,23 +113,41 @@ model LaptopImage {
   @@unique([laptopId, kind, position])
 }
 
+model Cart {
+  id             String     @id @default(uuid()) @db.Uuid
+  userId         String?    @db.Uuid
+  guestSessionId String?
+  status         CartStatus @default(ACTIVE)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  user  User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items CartItem[]
+
+  @@index([userId, status])
+  @@index([guestSessionId, status])
+}
+
 model CartItem {
   id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @db.Uuid
+  cartId    String   @db.Uuid
   laptopId  String   @db.Uuid
   quantity  Int
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cart   Cart   @relation(fields: [cartId], references: [id], onDelete: Cascade)
   laptop Laptop @relation(fields: [laptopId], references: [id], onDelete: Restrict)
 
-  @@unique([userId, laptopId])
+  @@unique([cartId, laptopId])
+  @@index([cartId])
 }
 
 model Order {
   id             String        @id @default(uuid()) @db.Uuid
-  userId         String        @db.Uuid
+  userId         String?       @db.Uuid
+  ownerType      OrderOwnerType @default(CUSTOMER)
+  guestSessionId String?
   status         OrderStatus   @default(PENDING)
   paymentMethod  PaymentMethod @default(COD)
   fullName       String
@@ -118,8 +164,12 @@ model Order {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
-  user  User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  user  User?       @relation(fields: [userId], references: [id], onDelete: Restrict)
   items OrderItem[]
+
+  @@index([userId])
+  @@index([guestSessionId])
+  @@index([ownerType, createdAt])
 }
 
 model OrderItem {

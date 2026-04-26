@@ -4,6 +4,40 @@ import { PrismaClient, UserRole } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
+    const categories = [
+        {
+            name: 'Gaming Laptops',
+            slug: 'gaming-laptops',
+            description: 'High-performance laptops for gaming and heavy graphics workloads.',
+        },
+        {
+            name: 'Business Laptops',
+            slug: 'business-laptops',
+            description: 'Reliable laptops built for office and productivity workflows.',
+        },
+        {
+            name: 'Ultrabooks',
+            slug: 'ultrabooks',
+            description: 'Thin and lightweight premium laptops for portability.',
+        },
+        {
+            name: 'Student Laptops',
+            slug: 'student-laptops',
+            description: 'Affordable everyday laptops for study and daily tasks.',
+        },
+    ];
+
+    for (const category of categories) {
+        await prisma.category.upsert({
+            where: { slug: category.slug },
+            update: {
+                name: category.name,
+                description: category.description,
+            },
+            create: category,
+        });
+    }
+
     const email = process.env.ADMIN_EMAIL;
     const password = process.env.ADMIN_PASSWORD;
 

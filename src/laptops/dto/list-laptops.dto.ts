@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { IsIn, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsIn, IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
 
 export class ListLaptopsDto {
     @IsOptional()
@@ -9,6 +9,10 @@ export class ListLaptopsDto {
     @IsOptional()
     @IsString()
     brand?: string;
+
+    @IsOptional()
+    @IsUUID()
+    categoryId?: string;
 
     @IsOptional()
     @Transform(({ value }) => Number(value))

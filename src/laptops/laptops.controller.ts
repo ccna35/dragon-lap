@@ -40,6 +40,12 @@ export class LaptopsController {
         return this.laptopsService.listAdmin(query);
     }
 
+    @Get('admin/laptops/:id')
+    @Roles(Role.ADMIN)
+    getAdminById(@Param('id') id: string) {
+        return this.laptopsService.getAdminById(id);
+    }
+
     @Post('admin/laptops')
     @Roles(Role.ADMIN)
     create(@Body() dto: CreateLaptopDto) {
