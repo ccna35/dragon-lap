@@ -1453,7 +1453,11 @@
           "gpu": { "type": "string", "nullable": true },
           "screenSize": { "type": "string", "nullable": true },
           "os": { "type": "string", "nullable": true },
-          "categoryId": { "type": "string", "format": "uuid", "nullable": true },
+          "categoryId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
           "category": {
             "oneOf": [
               { "$ref": "#/components/schemas/Category" },
