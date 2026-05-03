@@ -11,6 +11,7 @@ import {
     Prisma,
 } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
+import { IdempotencyService } from '../common/services/idempotency.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { AdminListOrdersDto } from './dto/admin-list-orders.dto';
@@ -30,24 +31,85 @@ type OwnerContext =
 
 @Injectable()
 export class OrdersService {
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly idempotency: IdempotencyService,
+    ) { }
 
     private toNumber(value: Prisma.Decimal): number {
         return Number(value.toString());
     }
 
     async createOrder(userId: string, dto: CreateOrderDto) {
-        return this.createOrderForOwner(
-            this.resolveOwnerContext({ userId }),
-            dto,
+        // Check for cached response first
+        const cached = await this.idempotency.checkAndRetrieve(
+            dto.idempotencyKey,
         );
+        if (cached) {
+            return cached.data;
+        }
+
+        // Create pending idempotency record
+        await this.idempotency.createPendingKey(dto.idempotencyKey);
+
+        try {
+            const order = await this.createOrderForOwner(
+                this.resolveOwnerContext({ userId }),
+                dto,
+            );
+
+            // Mark as successful
+            await this.idempotency.markSuccess(dto.idempotencyKey, order.id, {
+                id: order.id,
+                total: order.total,
+                status: order.status,
+            });
+
+            return order;
+        } catch (error) {
+            // Mark as failed
+            await this.idempotency.markFailed(
+                dto.idempotencyKey,
+                error instanceof Error ? error.message : 'Unknown error',
+            );
+            throw error;
+        }
     }
 
     async createGuestOrder(guestSessionId: string, dto: CreateOrderDto) {
-        return this.createOrderForOwner(
-            this.resolveOwnerContext({ guestSessionId }),
-            dto,
+        // Check for cached response first
+        const cached = await this.idempotency.checkAndRetrieve(
+            dto.idempotencyKey,
         );
+        if (cached) {
+            return cached.data;
+        }
+
+        // Create pending idempotency record
+        await this.idempotency.createPendingKey(dto.idempotencyKey);
+
+        try {
+            const order = await this.createOrderForOwner(
+                this.resolveOwnerContext({ guestSessionId }),
+                dto,
+            );
+
+            // Mark as successful
+            await this.idempotency.markSuccess(dto.idempotencyKey, order.id, {
+                id: order.id,
+                total: order.total,
+                status: order.status,
+            });
+
+            return order;
+        } catch (error) {
+            // Mark as failed
+            await this.idempotency.markFailed(
+                dto.idempotencyKey,
+                error instanceof Error ? error.message : 'Unknown error',
+            );
+            throw error;
+        }
     }
 
     private async createOrderForOwner(owner: OwnerContext, dto: CreateOrderDto) {

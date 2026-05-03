@@ -1,6 +1,7 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { IdempotencyInterceptor } from './common/interceptors/idempotency.interceptor';
 import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
@@ -14,6 +15,9 @@ async function bootstrap() {
     });
 
     app.use(cookieParser());
+
+    // Add idempotency interceptor globally
+    app.useGlobalInterceptors(new IdempotencyInterceptor());
 
     app.useGlobalPipes(
         new ValidationPipe({

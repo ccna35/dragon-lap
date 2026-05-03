@@ -1,4 +1,4 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateOrderDto {
     @IsString()
@@ -23,4 +23,7 @@ export class CreateOrderDto {
     @IsOptional()
     @IsString()
     notes?: string;
+
+    @IsUUID()
+    idempotencyKey: string;
 }
