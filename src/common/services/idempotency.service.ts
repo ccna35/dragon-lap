@@ -3,6 +3,7 @@ import {
     ConflictException,
     Injectable,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma.service';
 import { IdempotencyKeyStatus } from '@prisma/client';
 
@@ -39,8 +40,9 @@ export class IdempotencyService {
         }
 
         if (existing.status === IdempotencyKeyStatus.FAILED) {
+            const response = existing.response as Record<string, string> | null;
             throw new BadRequestException(
-                existing.response?.error || 'Previous payment attempt failed',
+                response?.error || 'Previous payment attempt failed',
             );
         }
 
@@ -73,7 +75,7 @@ export class IdempotencyService {
             data: {
                 status: IdempotencyKeyStatus.SUCCESS,
                 orderId,
-                response: responseData || null,
+                response: responseData ?? Prisma.JsonNull,
             },
         });
     }

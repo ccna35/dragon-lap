@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { IdempotencyService } from '../common/services/idempotency.service';
+import { IdempotencyService } from '../services/idempotency.service';
 
 /**
  * Scheduled tasks for cleanup and maintenance

@@ -58,6 +58,11 @@ export class OrdersService {
                 dto,
             );
 
+            // Check if order isn't null before marking as successful
+            if (!order) {
+                throw new NotFoundException('Order creation failed');
+            }
+
             // Mark as successful
             await this.idempotency.markSuccess(dto.idempotencyKey, order.id, {
                 id: order.id,
@@ -93,6 +98,11 @@ export class OrdersService {
                 this.resolveOwnerContext({ guestSessionId }),
                 dto,
             );
+
+            // Check if order isn't null before marking as successful
+            if (!order) {
+                throw new NotFoundException('Order creation failed');
+            }
 
             // Mark as successful
             await this.idempotency.markSuccess(dto.idempotencyKey, order.id, {
